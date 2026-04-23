@@ -95,8 +95,7 @@ def load_config() -> dict | None:
         # migrate old-format keys
         if "api_key" not in cfg:
             return None
-        if "server_url" not in cfg:
-            cfg["server_url"] = SERVER_URL
+        cfg["server_url"] = SERVER_URL  # always use compiled-in URL, not stale config value
         if "name" not in cfg:
             cfg["name"] = cfg.get("username", "")
         if "employee_id" not in cfg:
