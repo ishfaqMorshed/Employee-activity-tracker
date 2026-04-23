@@ -1,0 +1,8 @@
+# Central API server + AI analyzer + Slack reporter
+fastapi==0.111.0
+uvicorn[standard]==0.29.0
+supabase==2.4.6
+anthropic==0.26.0
+requests==2.31.0
+pydantic==2.7.1
+python-multipart==0.0.9

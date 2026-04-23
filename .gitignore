@@ -1,0 +1,32 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+
+# PyInstaller build output
+dist/
+build/
+*.spec
+
+# Frontend
+frontend/node_modules/
+frontend/dist/
+
+# Logs
+logs/
+*.log
+
+# Secrets — set these as env vars in Railway/Vercel instead
+.env
+*.bat
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
