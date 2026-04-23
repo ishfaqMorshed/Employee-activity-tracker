@@ -22,6 +22,8 @@ logs/
 # Secrets — set these as env vars in Railway/Vercel instead
 .env
 *.bat
+schedule_nightly.ps1
+task_env.bat
 
 # OS
 .DS_Store

@@ -519,18 +519,43 @@ def run(report_date: date):
         log.info("Summaries saved to DB")
 
 
+def post_attendance_check():
+    """11 AM check: who has started tracking today vs who hasn't."""
+    today = datetime.now().date().isoformat()
+    employees = supabase.table("employees").select("id, name, slack_user_id") \
+        .eq("active", True).execute().data
+
+    online, offline = [], []
+    for emp in employees:
+        shots = supabase.table("screenshots").select("id") \
+            .eq("employee_id", emp["id"]).gte("captured_at", today).execute()
+        (online if shots.data else offline).append(emp)
+
+    lines = [f"*🕐 11 AM Attendance — {today}*"]
+    if online:
+        lines.append("*🟢 Tracking:* " + ", ".join(e["name"] for e in online))
+    if offline:
+        lines.append("*⚫ Not started:* " + ", ".join(e["name"] for e in offline))
+
+    requests.post(SLACK_WEBHOOK_URL, json={"text": "\n".join(lines)})
+    log.info(f"Attendance check: {len(online)} online, {len(offline)} offline")
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Slack daily reporter v2.0")
     parser.add_argument("--date", type=str, default=None)
     parser.add_argument("--test", action="store_true")
+    parser.add_argument("--attendance", action="store_true", help="Post 11 AM attendance check")
     args = parser.parse_args()
 
-    if args.test:
+    if args.attendance:
+        post_attendance_check()
+    elif args.test:
         ok = post_to_slack(
             blocks=[{"type": "section", "text": {"type": "mrkdwn", "text": ":white_check_mark: Slack reporter v2.0 connected!"}}],
             text="Test",
         )
         sys.exit(0 if ok else 1)
-
-    report_date = date.fromisoformat(args.date) if args.date else date.today()
-    run(report_date)
+    else:
+        report_date = date.fromisoformat(args.date) if args.date else date.today()
+        run(report_date)

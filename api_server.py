@@ -604,6 +604,18 @@ def set_agent_control(
     return {"status": status, "employee_id": employee_id}
 
 
+@app.post("/admin/analyze-now")
+def trigger_analysis(
+    target_date: Optional[str] = Body(default=None, embed=True),
+    _admin=Depends(verify_admin_key),
+):
+    """Manually trigger AI analysis + Slack report. Called from AdminDashboard."""
+    date_str = target_date or datetime.utcnow().date().isoformat()
+    _run_pipeline_async()
+    log.info(f"Manual pipeline trigger for {date_str}")
+    return {"status": "triggered", "date": date_str}
+
+
 # ============================================================
 # MAIN
 # ============================================================

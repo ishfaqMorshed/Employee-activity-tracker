@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import Login from './pages/Login'
 import ManagerDashboard from './pages/ManagerDashboard'
+import AdminDashboard from './pages/AdminDashboard'
 import EmployeeDashboard from './pages/EmployeeDashboard'
 import Onboarding from './pages/Onboarding'
 
@@ -24,6 +25,11 @@ export default function App() {
         <Route path="/employee/:id" element={
           <RequireAuth>
             <EmployeeDashboard />
+          </RequireAuth>
+        } />
+        <Route path="/admin" element={
+          <RequireAuth managerOnly>
+            <AdminDashboard />
           </RequireAuth>
         } />
         <Route path="/onboarding" element={<Onboarding />} />
