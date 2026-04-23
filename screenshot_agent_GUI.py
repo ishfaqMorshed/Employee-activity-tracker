@@ -22,8 +22,8 @@ import tkinter as tk
 # ── Paths ────────────────────────────────────────────────────────────────────
 CONFIG_PATH    = r"C:\ProgramData\ScreenshotAgent\config.json"
 LOG_DIR        = r"C:\ProgramData\ScreenshotAgent\logs"
-SERVER_URL     = "http://localhost:8000"
-ONBOARDING_URL = "http://localhost:5173/onboarding"
+SERVER_URL     = "https://employee-activity-tracker-production-ff6f.up.railway.app"
+ONBOARDING_URL = "https://employee-activity-tracker-nun197tg0-ishfaqmorsheds-projects.vercel.app/onboarding"
 CALLBACK_PORT  = 7777
 CONTROL_POLL_S = 10
 
