@@ -86,7 +86,7 @@ export default function EmployeeDashboard() {
            style={{ borderBottomColor: 'rgba(168,85,247,0.2)', boxShadow: '0 1px 12px rgba(168,85,247,0.08)' }}>
         <div className="flex items-center gap-3">
           {isManager && (
-            <button onClick={() => navigate('/admin')}
+            <button onClick={() => navigate('/manager')}
                     className="text-sm font-medium transition-colors"
                     style={{ color: '#A855F7' }}>
               ← Team

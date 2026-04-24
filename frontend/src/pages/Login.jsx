@@ -15,7 +15,7 @@ export default function Login() {
     try {
       const data = await api.login(email.trim().toLowerCase())
       localStorage.setItem('session', JSON.stringify(data))
-      if (data.is_manager) navigate('/admin')
+      if (data.is_manager) navigate('/manager')
       else navigate(`/employee/${data.employee.id}`)
     } catch (err) {
       setError(err.detail || 'Employee not found. Check your email.')

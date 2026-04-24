@@ -244,25 +244,17 @@ def auth_login(email: str = Body(..., embed=True)):
     return resp
 
 
-def _calc_productivity(today_rows: list) -> int:
-    """Score from activity_level when AI hasn't run yet."""
-    if not today_rows:
-        return 0
-    scores = {"high": 85, "medium": 65, "low": 40, "idle": 10}
-    total = sum(scores.get(r.get("activity_level") or "idle", 10) for r in today_rows)
-    return round(total / len(today_rows))
-
-
 def _employee_live_status(employee_id: str) -> dict:
+    """Shared helper — used by both employee and manager status endpoints."""
     now = datetime.utcnow()
     today = now.date().isoformat()
 
     last = supabase.table("screenshots").select(
-        "captured_at, process_name, app_name, window_title_raw, activity_level, keyboard_count, mouse_count"
+        "captured_at, app_name, window_title_raw, activity_level"
     ).eq("employee_id", employee_id).order("captured_at", desc=True).limit(1).execute()
 
     today_rows = supabase.table("screenshots").select(
-        "productivity, activity_level, process_name, app_name, keyboard_count, mouse_count"
+        "productivity, activity_level"
     ).eq("employee_id", employee_id).gte("captured_at", today).execute().data
 
     total_today = len(today_rows)
@@ -270,38 +262,10 @@ def _employee_live_status(employee_id: str) -> dict:
         r.get("productivity") in ("High", "Medium") or
         (not r.get("productivity") and r.get("activity_level") in ("high", "medium", "low")))
 
-    # App breakdown
-    app_counts: dict = defaultdict(int)
-    for r in today_rows:
-        app = r.get("app_name") or r.get("process_name") or "Unknown"
-        app_counts[app] += 1
-    total_app_mins = sum(app_counts.values()) or 1
-    app_breakdown = [
-        {"app": a, "minutes": m, "percentage": round(m / total_app_mins * 100)}
-        for a, m in sorted(app_counts.items(), key=lambda x: x[1], reverse=True)[:6]
-    ]
-
-    # Activity summary (minutes in each level)
-    act_summary = {"high": 0, "medium": 0, "low": 0, "idle": 0}
-    for r in today_rows:
-        lvl = r.get("activity_level") or "idle"
-        if lvl in act_summary:
-            act_summary[lvl] += 1
-
-    # Input totals
-    kb_today = sum((r.get("keyboard_count") or 0) for r in today_rows)
-    ms_today = sum((r.get("mouse_count") or 0) for r in today_rows)
-
-    offline_base = {
-        "status": "offline", "last_seen": None,
-        "current_app": "", "current_window": "", "activity_level": "",
-        "screenshots_today": 0, "active_minutes_today": 0,
-        "productivity_today": 0, "keyboard_today": 0, "mouse_today": 0,
-        "app_breakdown": [], "activity_summary": act_summary,
-    }
-
     if not last.data:
-        return offline_base
+        return {"status": "offline", "last_seen": None, "current_app": "",
+                "current_window": "", "activity_level": "",
+                "screenshots_today": 0, "active_minutes_today": 0}
 
     ls = last.data[0]
     raw_ts = ls["captured_at"].split("+")[0].replace("Z", "")
@@ -314,16 +278,11 @@ def _employee_live_status(employee_id: str) -> dict:
     return {
         "status": status,
         "last_seen": ls["captured_at"],
-        "current_app": ls.get("app_name") or ls.get("process_name") or "",
+        "current_app": ls.get("app_name") or "",
         "current_window": ls.get("window_title_raw") or "",
         "activity_level": ls.get("activity_level") or "",
         "screenshots_today": total_today,
         "active_minutes_today": active_mins,
-        "productivity_today": _calc_productivity(today_rows),
-        "keyboard_today": kb_today,
-        "mouse_today": ms_today,
-        "app_breakdown": app_breakdown,
-        "activity_summary": act_summary,
     }
 
 
@@ -396,42 +355,13 @@ def get_employee_dashboard(
 
 
 @app.get("/manager/team-status")
-@app.get("/admin/team-status")
 def get_team_status(_admin=Depends(verify_admin_key)):
-    """All employees with live status — admin view."""
+    """All employees with live status — manager view."""
     employees = supabase.table("employees").select(
         "id, name, email, role, department, slack_user_id"
     ).eq("active", True).execute().data
+
     return [{**emp, **_employee_live_status(emp["id"])} for emp in employees]
-
-
-@app.get("/admin/employee/{employee_id}/detail")
-def get_employee_detail(employee_id: str, _admin=Depends(verify_admin_key)):
-    """Rich employee detail for admin modal: recent screenshots + full stats."""
-    today = datetime.utcnow().date().isoformat()
-    live = _employee_live_status(employee_id)
-
-    # Fetch recent 50 screenshots for the activity log
-    recent = supabase.table("screenshots").select(
-        "captured_at, process_name, app_name, window_title_raw, activity_level, keyboard_count, mouse_count, productivity"
-    ).eq("employee_id", employee_id).gte("captured_at", today).order("captured_at", desc=True).limit(50).execute().data
-
-    # Hourly activity breakdown
-    hourly: dict = defaultdict(lambda: {"high": 0, "medium": 0, "low": 0, "idle": 0})
-    for r in recent:
-        try:
-            hour = int(r["captured_at"][11:13])
-            lvl = r.get("activity_level") or "idle"
-            if lvl in hourly[hour]:
-                hourly[hour][lvl] += 1
-        except Exception:
-            pass
-
-    return {
-        **live,
-        "recent_screenshots": recent[:30],
-        "hourly_activity": [{"hour": h, **v} for h, v in sorted(hourly.items())],
-    }
 
 
 # ============================================================
