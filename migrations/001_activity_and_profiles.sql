@@ -69,3 +69,7 @@ CREATE TABLE IF NOT EXISTS device_registrations (
   registered  BOOLEAN DEFAULT false,
   created_at  TIMESTAMP DEFAULT NOW()
 );
+
+-- Real-time tracking flag (agent sets TRUE on START, FALSE on STOP/close)
+ALTER TABLE employees
+ADD COLUMN IF NOT EXISTS is_tracking BOOLEAN DEFAULT FALSE;

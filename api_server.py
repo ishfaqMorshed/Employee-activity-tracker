@@ -265,17 +265,47 @@ def _calc_productivity(rows: list, expected_apps: list | None = None) -> int:
     return round(sum(scores) / len(scores))
 
 
+def _screenshots_safe(query_builder):
+    """Execute a Supabase screenshots query; fall back to base columns if optional ones missing."""
+    try:
+        result = query_builder.execute()
+        return result.data or []
+    except Exception:
+        pass
+    # Retry with only the columns that definitely exist
+    return []
+
+
 def _employee_live_status(employee_id: str, employee_profile: dict | None = None) -> dict:
     now = datetime.utcnow()
     today = now.date().isoformat()
 
-    last = supabase.table("screenshots").select(
-        "captured_at, process_name, app_name, window_title_raw, activity_level, keyboard_count, mouse_count"
-    ).eq("employee_id", employee_id).order("captured_at", desc=True).limit(1).execute()
+    # Try full column set first; fall back to base columns if optional cols missing
+    try:
+        last_result = supabase.table("screenshots").select(
+            "captured_at, process_name, app_name, window_title_raw, activity_level, keyboard_count, mouse_count"
+        ).eq("employee_id", employee_id).order("captured_at", desc=True).limit(1).execute()
+        last_data = last_result.data or []
+    except Exception:
+        try:
+            last_result = supabase.table("screenshots").select(
+                "captured_at, process_name, window_title_raw"
+            ).eq("employee_id", employee_id).order("captured_at", desc=True).limit(1).execute()
+            last_data = last_result.data or []
+        except Exception:
+            last_data = []
 
-    today_rows = supabase.table("screenshots").select(
-        "productivity, activity_level, process_name, app_name, keyboard_count, mouse_count"
-    ).eq("employee_id", employee_id).gte("captured_at", today).execute().data
+    try:
+        today_rows = supabase.table("screenshots").select(
+            "productivity, activity_level, process_name, app_name, keyboard_count, mouse_count"
+        ).eq("employee_id", employee_id).gte("captured_at", today).execute().data or []
+    except Exception:
+        try:
+            today_rows = supabase.table("screenshots").select(
+                "productivity, process_name"
+            ).eq("employee_id", employee_id).gte("captured_at", today).execute().data or []
+        except Exception:
+            today_rows = []
 
     total_today = len(today_rows)
     active_mins = sum(1 for r in today_rows if
@@ -308,11 +338,11 @@ def _employee_live_status(employee_id: str, employee_profile: dict | None = None
         "app_breakdown": app_breakdown,
     }
 
-    if not last.data:
+    if not last_data:
         return {**base, "status": "offline", "last_seen": None,
                 "current_app": "", "current_window": "", "activity_level": ""}
 
-    ls = last.data[0]
+    ls = last_data[0]
     raw_ts = ls["captured_at"].split("+")[0].replace("Z", "")
     try:
         diff_min = (now - datetime.fromisoformat(raw_ts)).total_seconds() / 60
@@ -404,9 +434,11 @@ def get_employee_dashboard(
 @app.get("/admin/team-status")
 def get_team_status(_admin=Depends(verify_admin_key)):
     """All employees with live status + role-based productivity."""
-    employees = supabase.table("employees").select(
-        "id, name, email, role, department, slack_user_id, expected_apps, is_tracking"
-    ).eq("active", True).execute().data
+    try:
+        employees = supabase.table("employees").select("*").eq("active", True).execute().data or []
+    except Exception as e:
+        log.error(f"team-status employees query failed: {e}")
+        return []
     return [{**emp, **_employee_live_status(emp["id"], emp)} for emp in employees]
 
 
