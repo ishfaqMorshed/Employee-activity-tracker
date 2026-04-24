@@ -366,7 +366,9 @@ def _employee_live_status(employee_id: str, employee_profile: dict | None = None
 def get_employee_status(employee_id: str, employee: dict = Depends(verify_employee_api_key)):
     if employee["id"] != employee_id:
         raise HTTPException(status_code=403, detail="Access denied")
-    return _employee_live_status(employee_id)
+    live = _employee_live_status(employee_id, employee)
+    live["is_tracking"] = live.get("status") == "active"
+    return live
 
 
 @app.get("/employee/{employee_id}/dashboard")
@@ -439,7 +441,13 @@ def get_team_status(_admin=Depends(verify_admin_key)):
     except Exception as e:
         log.error(f"team-status employees query failed: {e}")
         return []
-    return [{**emp, **_employee_live_status(emp["id"], emp)} for emp in employees]
+    result = []
+    for emp in employees:
+        live = _employee_live_status(emp["id"], emp)
+        # Derive is_tracking from last screenshot time — works with all agent versions
+        live["is_tracking"] = live.get("status") == "active"
+        result.append({**emp, **live})
+    return result
 
 
 @app.put("/agent/{employee_id}/tracking")
