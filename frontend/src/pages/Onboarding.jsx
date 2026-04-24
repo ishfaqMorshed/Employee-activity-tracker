@@ -250,7 +250,16 @@ export default function Onboarding() {
                 <p className="font-medium text-white mb-2">Next steps:</p>
                 <p>1. Open the Activity Monitor desktop app</p>
                 <p>2. Press <span className="text-green-400 font-medium">START</span> to begin tracking</p>
-                <p>3. View your stats at <span className="text-blue-400">localhost:5173</span></p>
+                <p>3. View your stats at{' '}
+                  <a
+                    href={`${window.location.origin}/employee/${result.employee_id}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-blue-400 underline hover:text-blue-300"
+                  >
+                    your dashboard
+                  </a>
+                </p>
               </div>
             </div>
           )}
