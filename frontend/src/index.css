@@ -2,12 +2,52 @@
 @tailwind components;
 @tailwind utilities;
 
-body {
-  background-color: #0f172a;
-  color: #e2e8f0;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+@font-face {
+  font-family: 'Greater Neue';
+  src: url('/fonts/greaterneue-regular.otf') format('opentype');
+  font-weight: 400;
+  font-style: normal;
+}
+@font-face {
+  font-family: 'Greater Neue';
+  src: url('/fonts/greaterneue-medium.otf') format('opentype');
+  font-weight: 500;
+  font-style: normal;
+}
+@font-face {
+  font-family: 'Greater Neue';
+  src: url('/fonts/greaterneue-semibold.otf') format('opentype');
+  font-weight: 600;
+  font-style: normal;
+}
+@font-face {
+  font-family: 'Greater Neue';
+  src: url('/fonts/greaterneue-bold.otf') format('opentype');
+  font-weight: 700;
+  font-style: normal;
 }
 
-::-webkit-scrollbar { width: 6px; }
-::-webkit-scrollbar-track { background: #0f172a; }
-::-webkit-scrollbar-thumb { background: #334155; border-radius: 3px; }
+body {
+  background-color: #FFFFFF;
+  color: #1E293B;
+  font-family: 'Greater Neue', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes gradientShift {
+  0%, 100% { background-position: 0% 50%; }
+  50%       { background-position: 100% 50%; }
+}
+@keyframes rotateSlow {
+  to { transform: rotate(360deg); }
+}
+
+.dm-fade-in        { animation: fadeInUp 0.6s ease; }
+.dm-gradient-anim  { background-size: 200% 200%; animation: gradientShift 3s ease infinite; }
+
+::-webkit-scrollbar       { width: 6px; }
+::-webkit-scrollbar-track { background: #F8FAFC; }
+::-webkit-scrollbar-thumb { background: rgba(168, 85, 247, 0.3); border-radius: 3px; }

@@ -110,13 +110,16 @@ export default function Onboarding() {
   const groups = [...new Set(APP_OPTIONS.map(a => a.group))]
 
   return (
-    <div className="min-h-screen bg-slate-900 flex items-center justify-center px-4 py-8">
-      <div className="w-full max-w-lg">
+    <div className="min-h-screen flex items-center justify-center px-4 py-8"
+         style={{ background: 'linear-gradient(135deg, #FAFAFA 0%, #F3E8FF 100%)' }}>
+      <div className="w-full max-w-lg dm-fade-in">
         {/* Header */}
         <div className="text-center mb-6">
-          <div className="text-3xl mb-2">📊</div>
-          <h1 className="text-xl font-bold text-white">Activity Monitor Setup</h1>
-          <p className="text-slate-400 text-sm mt-1">Complete your profile to start tracking</p>
+          <img src="/images/dm-logo.png" alt="Design Musketeer"
+               className="h-10 object-contain mx-auto mb-3"
+               onError={e => { e.target.style.display='none' }} />
+          <h1 className="text-xl font-bold text-slate-900">Activity Monitor Setup</h1>
+          <p className="text-sm mt-1 font-medium" style={{ color: '#A855F7' }}>Complete your profile to start tracking</p>
         </div>
 
         {/* Step indicator */}
@@ -124,37 +127,51 @@ export default function Onboarding() {
           <div className="flex items-center justify-between mb-6 px-2">
             {STEPS.slice(0, 4).map((s, i) => (
               <div key={i} className="flex items-center gap-1">
-                <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold
-                  ${i < step ? 'bg-green-500 text-white' : i === step ? 'bg-blue-500 text-white' : 'bg-slate-700 text-slate-400'}`}>
+                <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold text-white transition-all`}
+                     style={{
+                       background: i < step
+                         ? 'linear-gradient(135deg,#10B981,#22C55E)'
+                         : i === step
+                         ? 'linear-gradient(135deg,#A855F7,#C084FC)'
+                         : '#E2E8F0',
+                       color: i >= step && i !== step ? '#94A3B8' : 'white',
+                     }}>
                   {i < step ? '✓' : i + 1}
                 </div>
-                {i < 3 && <div className={`h-0.5 w-12 sm:w-16 ${i < step ? 'bg-green-500' : 'bg-slate-700'}`} />}
+                {i < 3 && (
+                  <div className="h-0.5 w-12 sm:w-16 transition-all"
+                       style={{ background: i < step ? 'linear-gradient(90deg,#10B981,#22C55E)' : '#E2E8F0' }} />
+                )}
               </div>
             ))}
           </div>
         )}
 
-        <div className="bg-slate-800 rounded-2xl p-6 border border-slate-700">
+        <div className="bg-white rounded-3xl p-6"
+             style={{ border: '1px solid rgba(168,85,247,0.15)', boxShadow: '0 8px 32px rgba(168,85,247,0.08)' }}>
           {/* STEP 0: Basic Info */}
           {step === 0 && (
             <div className="space-y-4">
-              <h2 className="text-white font-semibold text-lg mb-4">Basic Information</h2>
+              <h2 className="text-slate-900 font-semibold text-lg mb-4">Basic Information</h2>
+              {[
+                { label: 'Full Name', field: 'name', type: 'text', placeholder: 'John Smith' },
+                { label: 'Work Email', field: 'email', type: 'email', placeholder: 'john@company.com' },
+              ].map(({ label, field, type, placeholder }) => (
+                <div key={field}>
+                  <label className="text-slate-600 text-sm block mb-1 font-medium">{label}</label>
+                  <input type={type} value={form[field]} onChange={e => set(field, e.target.value)}
+                    placeholder={placeholder}
+                    className="w-full bg-white rounded-xl px-4 py-2.5 text-sm text-slate-800 outline-none border"
+                    style={{ borderColor: 'rgba(168,85,247,0.25)' }}
+                    onFocus={e => e.target.style.boxShadow='0 0 0 3px rgba(168,85,247,0.12)'}
+                    onBlur={e => e.target.style.boxShadow='none'} />
+                </div>
+              ))}
               <div>
-                <label className="text-slate-400 text-sm block mb-1">Full Name</label>
-                <input value={form.name} onChange={e => set('name', e.target.value)}
-                  placeholder="John Smith"
-                  className="w-full bg-slate-700 text-white rounded-lg px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500" />
-              </div>
-              <div>
-                <label className="text-slate-400 text-sm block mb-1">Work Email</label>
-                <input type="email" value={form.email} onChange={e => set('email', e.target.value)}
-                  placeholder="john@company.com"
-                  className="w-full bg-slate-700 text-white rounded-lg px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500" />
-              </div>
-              <div>
-                <label className="text-slate-400 text-sm block mb-1">Department</label>
+                <label className="text-slate-600 text-sm block mb-1 font-medium">Department</label>
                 <select value={form.department} onChange={e => set('department', e.target.value)}
-                  className="w-full bg-slate-700 text-white rounded-lg px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500">
+                  className="w-full bg-white rounded-xl px-4 py-2.5 text-sm text-slate-800 outline-none border"
+                  style={{ borderColor: 'rgba(168,85,247,0.25)' }}>
                   <option value="">Select department…</option>
                   {DEPARTMENTS.map(d => <option key={d}>{d}</option>)}
                 </select>
@@ -165,20 +182,24 @@ export default function Onboarding() {
           {/* STEP 1: Role */}
           {step === 1 && (
             <div className="space-y-4">
-              <h2 className="text-white font-semibold text-lg mb-4">Your Role</h2>
+              <h2 className="text-slate-900 font-semibold text-lg mb-4">Your Role</h2>
               <div>
-                <label className="text-slate-400 text-sm block mb-1">Job Title</label>
+                <label className="text-slate-600 text-sm block mb-1 font-medium">Job Title</label>
                 <select value={form.role} onChange={e => set('role', e.target.value)}
-                  className="w-full bg-slate-700 text-white rounded-lg px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500">
+                  className="w-full bg-white rounded-xl px-4 py-2.5 text-sm text-slate-800 outline-none border"
+                  style={{ borderColor: 'rgba(168,85,247,0.25)' }}>
                   <option value="">Select role…</option>
                   {ROLES.map(r => <option key={r}>{r}</option>)}
                 </select>
               </div>
               <div>
-                <label className="text-slate-400 text-sm block mb-1">What do you do daily? <span className="text-slate-500">(optional)</span></label>
+                <label className="text-slate-600 text-sm block mb-1 font-medium">
+                  What do you do daily? <span className="text-slate-400 font-normal">(optional)</span>
+                </label>
                 <textarea value={form.work_description} onChange={e => set('work_description', e.target.value)}
                   rows={4} placeholder="e.g. Build React components, review PRs, attend standups…"
-                  className="w-full bg-slate-700 text-white rounded-lg px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500 resize-none" />
+                  className="w-full bg-white rounded-xl px-4 py-2.5 text-sm text-slate-800 outline-none border resize-none"
+                  style={{ borderColor: 'rgba(168,85,247,0.25)' }} />
               </div>
             </div>
           )}
@@ -186,18 +207,22 @@ export default function Onboarding() {
           {/* STEP 2: Tools */}
           {step === 2 && (
             <div>
-              <h2 className="text-white font-semibold text-lg mb-1">Tools & Apps</h2>
-              <p className="text-slate-400 text-sm mb-4">Select apps you regularly use for work</p>
+              <h2 className="text-slate-900 font-semibold text-lg mb-1">Tools & Apps</h2>
+              <p className="text-slate-500 text-sm mb-4">Select apps you regularly use for work</p>
               {groups.map(group => (
                 <div key={group} className="mb-4">
-                  <p className="text-slate-500 text-xs uppercase tracking-wider mb-2">{group}</p>
+                  <p className="text-slate-400 text-xs uppercase tracking-wider mb-2 font-medium">{group}</p>
                   <div className="flex flex-wrap gap-2">
                     {APP_OPTIONS.filter(a => a.group === group).map(({ label }) => {
                       const on = form.expected_apps.includes(label)
                       return (
                         <button key={label} onClick={() => toggleApp(label)}
-                          className={`px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors
-                            ${on ? 'bg-blue-600 border-blue-500 text-white' : 'bg-slate-700 border-slate-600 text-slate-300 hover:border-slate-500'}`}>
+                          className="px-3 py-1.5 rounded-xl text-sm font-medium border transition-all"
+                          style={{
+                            background: on ? 'linear-gradient(135deg,#A855F7,#C084FC)' : 'white',
+                            borderColor: on ? '#A855F7' : 'rgba(168,85,247,0.2)',
+                            color: on ? 'white' : '#475569',
+                          }}>
                           {label}
                         </button>
                       )
@@ -206,10 +231,13 @@ export default function Onboarding() {
                 </div>
               ))}
               <div className="mt-4">
-                <label className="text-slate-400 text-sm block mb-1">Work websites <span className="text-slate-500">(comma-separated)</span></label>
+                <label className="text-slate-600 text-sm block mb-1 font-medium">
+                  Work websites <span className="text-slate-400 font-normal">(comma-separated)</span>
+                </label>
                 <input value={form.expected_sites} onChange={e => set('expected_sites', e.target.value)}
                   placeholder="github.com, figma.com, jira.com"
-                  className="w-full bg-slate-700 text-white rounded-lg px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500" />
+                  className="w-full bg-white rounded-xl px-4 py-2.5 text-sm text-slate-800 outline-none border"
+                  style={{ borderColor: 'rgba(168,85,247,0.25)' }} />
               </div>
             </div>
           )}
@@ -217,32 +245,36 @@ export default function Onboarding() {
           {/* STEP 3: Patterns */}
           {step === 3 && (
             <div className="space-y-5">
-              <h2 className="text-white font-semibold text-lg mb-4">Work Patterns</h2>
-              <label className="flex items-start gap-3 cursor-pointer">
+              <h2 className="text-slate-900 font-semibold text-lg mb-4">Work Patterns</h2>
+              <label className="flex items-start gap-3 cursor-pointer p-3 rounded-xl border"
+                     style={{ borderColor: 'rgba(168,85,247,0.15)', background: 'rgba(168,85,247,0.03)' }}>
                 <input type="checkbox" checked={form.youtube_ok} onChange={e => set('youtube_ok', e.target.checked)}
-                  className="mt-1 accent-blue-500" />
+                  className="mt-1 accent-violet-500" />
                 <div>
-                  <p className="text-white text-sm font-medium">YouTube tutorials for work</p>
-                  <p className="text-slate-400 text-xs">If checked, relevant tutorial watching counts as Medium productivity</p>
+                  <p className="text-slate-800 text-sm font-medium">YouTube tutorials for work</p>
+                  <p className="text-slate-500 text-xs mt-0.5">If checked, relevant tutorial watching counts as Medium productivity</p>
                 </div>
               </label>
               <div>
                 <div className="flex justify-between text-sm mb-2">
-                  <span className="text-slate-400">Time spent in meetings</span>
-                  <span className="text-white font-medium">{form.meeting_pct}%</span>
+                  <span className="text-slate-600">Time spent in meetings</span>
+                  <span className="font-semibold" style={{ color: '#A855F7' }}>{form.meeting_pct}%</span>
                 </div>
                 <input type="range" min="0" max="80" step="5" value={form.meeting_pct}
                   onChange={e => set('meeting_pct', Number(e.target.value))}
-                  className="w-full accent-blue-500" />
-                <div className="flex justify-between text-xs text-slate-500 mt-1">
+                  className="w-full accent-violet-500" />
+                <div className="flex justify-between text-xs text-slate-400 mt-1">
                   <span>0%</span><span>80%</span>
                 </div>
               </div>
               <div>
-                <label className="text-slate-400 text-sm block mb-1">Special cases <span className="text-slate-500">(optional)</span></label>
+                <label className="text-slate-600 text-sm block mb-1 font-medium">
+                  Special cases <span className="text-slate-400 font-normal">(optional)</span>
+                </label>
                 <textarea value={form.edge_cases} onChange={e => set('edge_cases', e.target.value)}
                   rows={3} placeholder="e.g. Sometimes use Photoshop for mockups even though I'm a developer"
-                  className="w-full bg-slate-700 text-white rounded-lg px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500 resize-none" />
+                  className="w-full bg-white rounded-xl px-4 py-2.5 text-sm text-slate-800 outline-none border resize-none"
+                  style={{ borderColor: 'rgba(168,85,247,0.25)' }} />
               </div>
             </div>
           )}
@@ -250,53 +282,59 @@ export default function Onboarding() {
           {/* STEP 4: Done */}
           {step === 4 && result && (
             <div className="text-center space-y-4">
-              <div className="text-4xl">✅</div>
-              <h2 className="text-white font-bold text-xl">You're all set, {result.name.split(' ')[0]}!</h2>
+              <div className="w-16 h-16 rounded-full flex items-center justify-center text-3xl mx-auto"
+                   style={{ background: 'linear-gradient(135deg,#10B981,#22C55E)' }}>✅</div>
+              <h2 className="text-slate-900 font-bold text-xl">You're all set, {result.name.split(' ')[0]}!</h2>
               {synced ? (
-                <div className="bg-green-900/40 border border-green-700 rounded-lg p-3 text-green-400 text-sm">
+                <div className="rounded-xl p-3 text-sm font-medium"
+                     style={{ background: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.3)', color: '#059669' }}>
                   Desktop app synced — press START to begin tracking
                 </div>
               ) : (
-                <div className="bg-slate-700 rounded-lg p-4 text-left">
-                  <p className="text-slate-400 text-xs mb-1">Your API Key (save this)</p>
-                  <p className="text-white font-mono text-sm break-all select-all">{result.api_key}</p>
-                  <p className="text-slate-500 text-xs mt-2">Enter this in the desktop app when prompted</p>
+                <div className="rounded-xl p-4 text-left"
+                     style={{ background: 'rgba(168,85,247,0.05)', border: '1px solid rgba(168,85,247,0.15)' }}>
+                  <p className="text-slate-500 text-xs mb-1">Your API Key (save this)</p>
+                  <p className="font-mono text-sm break-all select-all text-slate-900">{result.api_key}</p>
+                  <p className="text-slate-400 text-xs mt-2">Enter this in the desktop app when prompted</p>
                 </div>
               )}
-              <div className="bg-slate-700 rounded-lg p-4 text-left text-sm text-slate-300 space-y-1">
-                <p className="font-medium text-white mb-2">Next steps:</p>
+              <div className="rounded-xl p-4 text-left text-sm text-slate-600 space-y-2"
+                   style={{ background: '#F8FAFC', border: '1px solid #E2E8F0' }}>
+                <p className="font-semibold text-slate-800 mb-2">Next steps:</p>
                 <p>1. Open the Activity Monitor desktop app</p>
-                <p>2. Press <span className="text-green-400 font-medium">START</span> to begin tracking</p>
+                <p>2. Press <span className="font-semibold" style={{ color: '#10B981' }}>START</span> to begin tracking</p>
                 <p>3. Your dashboard will open automatically</p>
               </div>
               {countdown !== null && (
                 <p className="text-slate-400 text-sm">
-                  Redirecting to dashboard in <span className="text-white font-bold">{countdown}</span>s…
+                  Redirecting to dashboard in <span className="font-bold" style={{ color: '#A855F7' }}>{countdown}</span>s…
                 </p>
               )}
             </div>
           )}
 
-          {error && <p className="text-red-400 text-sm mt-3">{error}</p>}
+          {error && <p className="text-red-500 text-sm mt-3">⚠ {error}</p>}
 
           {/* Navigation */}
           {step < 4 && (
             <div className="flex justify-between mt-6">
               <button onClick={() => { setStep(s => s - 1); setError('') }}
                 disabled={step === 0}
-                className="px-4 py-2 text-sm text-slate-400 hover:text-white disabled:opacity-0 transition-colors">
+                className="px-4 py-2 text-sm font-medium text-slate-400 hover:text-slate-700 disabled:opacity-0 transition-colors">
                 ← Back
               </button>
               {step < 3 ? (
                 <button onClick={() => { setStep(s => s + 1); setError('') }}
                   disabled={!canNext()}
-                  className="px-6 py-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-white rounded-lg text-sm font-medium transition-colors">
+                  className="px-6 py-2.5 rounded-xl text-sm font-semibold text-white transition-all disabled:opacity-40"
+                  style={{ background: 'linear-gradient(135deg,#A855F7,#C084FC)', boxShadow: '0 4px 12px rgba(168,85,247,0.3)' }}>
                   Next →
                 </button>
               ) : (
                 <button onClick={submit} disabled={loading}
-                  className="px-6 py-2 bg-green-600 hover:bg-green-500 disabled:opacity-50 text-white rounded-lg text-sm font-medium transition-colors">
-                  {loading ? 'Creating account…' : 'Complete Setup'}
+                  className="px-6 py-2.5 rounded-xl text-sm font-semibold text-white transition-all disabled:opacity-50"
+                  style={{ background: 'linear-gradient(135deg,#10B981,#22C55E)', boxShadow: '0 4px 12px rgba(16,185,129,0.3)' }}>
+                  {loading ? 'Creating account…' : '✓ Complete Setup'}
                 </button>
               )}
             </div>
