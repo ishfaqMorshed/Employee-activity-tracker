@@ -31,7 +31,7 @@ export const api = {
 
   employeeStatus: (id) => request(`/employee/${id}/status`),
   employeeDashboard: (id, date) => request(`/employee/${id}/dashboard${date ? `?date=${date}` : ''}`),
-  teamStatus: () => adminRequest('/manager/team-status'),
+  teamStatus: () => adminRequest('/admin/team-status'),
 
   onboard: (profile) => fetch(BASE + '/employees/onboard', {
     method: 'POST',

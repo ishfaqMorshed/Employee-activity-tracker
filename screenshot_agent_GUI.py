@@ -270,6 +270,7 @@ class ActivityMonitorApp(tk.Tk):
 
         self._build_ui()
         self._tick()
+        self.protocol("WM_DELETE_WINDOW", self._on_close)
 
         cfg = load_config()
         if cfg:
@@ -359,6 +360,13 @@ class ActivityMonitorApp(tk.Tk):
     def _show_setup(self):  self._frm_setup.tkraise()
     def _show_main(self):   self._frm_main.tkraise()
 
+    def _on_close(self):
+        if self._running:
+            self._running = False
+            self._stop_event.set()
+            self._set_tracking(False)
+        self.destroy()
+
     # ── Onboarding ────────────────────────────────────────────────────────────
 
     def _open_onboarding(self):
@@ -373,6 +381,23 @@ class ActivityMonitorApp(tk.Tk):
 
     # ── START / STOP ──────────────────────────────────────────────────────────
 
+    def _set_tracking(self, is_tracking: bool):
+        cfg = self._cfg or {}
+        eid = cfg.get("employee_id", "")
+        if not eid:
+            return
+        try:
+            import requests
+            requests.put(
+                f"{cfg.get('server_url', SERVER_URL)}/agent/{eid}/tracking",
+                json={"tracking": is_tracking},
+                headers={"x-api-key": cfg.get("api_key", "")},
+                timeout=5,
+            )
+            log.info(f"Tracking set to {is_tracking}")
+        except Exception as e:
+            log.warning(f"tracking update failed: {e}")
+
     def _toggle(self):
         if self._running:
             self._running = False
@@ -380,12 +405,14 @@ class ActivityMonitorApp(tk.Tk):
             self._btn.configure(text="  START  ", bg="#22c55e",
                                 activebackground="#16a34a")
             log.info("Stopped by user")
+            threading.Thread(target=self._set_tracking, args=(False,), daemon=True).start()
         else:
             self._running = True
             self._stop_event.clear()
             self._btn.configure(text="  STOP  ", bg="#ef4444",
                                 activebackground="#dc2626")
             log.info("Started by user")
+            threading.Thread(target=self._set_tracking, args=(True,), daemon=True).start()
             threading.Thread(target=self._capture_loop, daemon=True).start()
 
     # ── Capture loop ──────────────────────────────────────────────────────────

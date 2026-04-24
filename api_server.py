@@ -244,17 +244,37 @@ def auth_login(email: str = Body(..., embed=True)):
     return resp
 
 
-def _employee_live_status(employee_id: str) -> dict:
-    """Shared helper — used by both employee and manager status endpoints."""
+_ACTIVITY_SCORES = {"high": 80, "medium": 60, "low": 35, "idle": 5}
+
+def _calc_productivity(rows: list, expected_apps: list | None = None) -> int:
+    if not rows:
+        return 0
+    ea = [a.lower().replace(".exe", "") for a in (expected_apps or [])]
+    scores = []
+    for r in rows:
+        base = _ACTIVITY_SCORES.get(r.get("activity_level") or "idle", 5)
+        process = (r.get("process_name") or r.get("app_name") or "").lower().replace(".exe", "")
+        if ea and process:
+            if any(process in a or a in process for a in ea):
+                base = min(100, base + 15)
+            elif r.get("activity_level") not in ("idle", None):
+                base = max(0, base - 10)
+        if (r.get("keyboard_count") or 0) > 150:
+            base = min(100, base + 5)
+        scores.append(base)
+    return round(sum(scores) / len(scores))
+
+
+def _employee_live_status(employee_id: str, employee_profile: dict | None = None) -> dict:
     now = datetime.utcnow()
     today = now.date().isoformat()
 
     last = supabase.table("screenshots").select(
-        "captured_at, app_name, window_title_raw, activity_level"
+        "captured_at, process_name, app_name, window_title_raw, activity_level, keyboard_count, mouse_count"
     ).eq("employee_id", employee_id).order("captured_at", desc=True).limit(1).execute()
 
     today_rows = supabase.table("screenshots").select(
-        "productivity, activity_level"
+        "productivity, activity_level, process_name, app_name, keyboard_count, mouse_count"
     ).eq("employee_id", employee_id).gte("captured_at", today).execute().data
 
     total_today = len(today_rows)
@@ -262,10 +282,35 @@ def _employee_live_status(employee_id: str) -> dict:
         r.get("productivity") in ("High", "Medium") or
         (not r.get("productivity") and r.get("activity_level") in ("high", "medium", "low")))
 
+    expected_apps = (employee_profile or {}).get("expected_apps") or []
+    productivity_today = _calc_productivity(today_rows, expected_apps)
+
+    # App breakdown
+    app_counts: dict = defaultdict(int)
+    for r in today_rows:
+        app = r.get("app_name") or r.get("process_name") or "Unknown"
+        app_counts[app] += 1
+    total_mins = sum(app_counts.values()) or 1
+    app_breakdown = [
+        {"app": a, "minutes": m, "percentage": round(m / total_mins * 100)}
+        for a, m in sorted(app_counts.items(), key=lambda x: x[1], reverse=True)[:6]
+    ]
+
+    kb_today = sum((r.get("keyboard_count") or 0) for r in today_rows)
+    ms_today = sum((r.get("mouse_count") or 0) for r in today_rows)
+
+    base = {
+        "screenshots_today": total_today,
+        "active_minutes_today": active_mins,
+        "productivity_today": productivity_today,
+        "keyboard_today": kb_today,
+        "mouse_today": ms_today,
+        "app_breakdown": app_breakdown,
+    }
+
     if not last.data:
-        return {"status": "offline", "last_seen": None, "current_app": "",
-                "current_window": "", "activity_level": "",
-                "screenshots_today": 0, "active_minutes_today": 0}
+        return {**base, "status": "offline", "last_seen": None,
+                "current_app": "", "current_window": "", "activity_level": ""}
 
     ls = last.data[0]
     raw_ts = ls["captured_at"].split("+")[0].replace("Z", "")
@@ -276,13 +321,14 @@ def _employee_live_status(employee_id: str) -> dict:
         status = "offline"
 
     return {
+        **base,
         "status": status,
         "last_seen": ls["captured_at"],
-        "current_app": ls.get("app_name") or "",
+        "current_app": ls.get("app_name") or ls.get("process_name") or "",
         "current_window": ls.get("window_title_raw") or "",
         "activity_level": ls.get("activity_level") or "",
-        "screenshots_today": total_today,
-        "active_minutes_today": active_mins,
+        "current_keyboard": ls.get("keyboard_count") or 0,
+        "current_mouse": ls.get("mouse_count") or 0,
     }
 
 
@@ -355,13 +401,29 @@ def get_employee_dashboard(
 
 
 @app.get("/manager/team-status")
+@app.get("/admin/team-status")
 def get_team_status(_admin=Depends(verify_admin_key)):
-    """All employees with live status — manager view."""
+    """All employees with live status + role-based productivity."""
     employees = supabase.table("employees").select(
-        "id, name, email, role, department, slack_user_id"
+        "id, name, email, role, department, slack_user_id, expected_apps, is_tracking"
     ).eq("active", True).execute().data
+    return [{**emp, **_employee_live_status(emp["id"], emp)} for emp in employees]
 
-    return [{**emp, **_employee_live_status(emp["id"])} for emp in employees]
+
+@app.put("/agent/{employee_id}/tracking")
+def set_tracking(
+    employee_id: str,
+    tracking: bool = Body(..., embed=True),
+    employee: dict = Depends(verify_employee_api_key),
+):
+    """Agent calls this on START (tracking=true) and STOP (tracking=false)."""
+    if employee["id"] != employee_id:
+        raise HTTPException(status_code=403, detail="Access denied")
+    try:
+        supabase.table("employees").update({"is_tracking": tracking}).eq("id", employee_id).execute()
+    except Exception as e:
+        log.warning(f"is_tracking update failed (run migration?): {e}")
+    return {"tracking": tracking}
 
 
 # ============================================================

@@ -2,17 +2,16 @@ import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { api } from '../api/client'
 import EmployeeCard from '../components/EmployeeCard'
-import StatCard from '../components/StatCard'
 
-const POLL_MS = 30000
+const POLL_MS = 4000
 
 export default function AdminDashboard() {
-  const [team, setTeam] = useState([])
-  const [loading, setLoading] = useState(true)
+  const [team, setTeam]           = useState([])
+  const [loading, setLoading]     = useState(true)
   const [lastUpdate, setLastUpdate] = useState(null)
   const [analyzing, setAnalyzing] = useState(false)
-  const [lastTrigger, setLastTrigger] = useState(null)
   const [triggerMsg, setTriggerMsg] = useState('')
+  const [search, setSearch]       = useState('')
   const navigate = useNavigate()
   const session = JSON.parse(localStorage.getItem('session') || '{}')
 
@@ -21,11 +20,8 @@ export default function AdminDashboard() {
       const data = await api.teamStatus()
       setTeam(data)
       setLastUpdate(new Date())
-    } catch (err) {
-      console.error('Team fetch failed:', err)
-    } finally {
-      setLoading(false)
-    }
+    } catch (err) { console.error(err) }
+    finally { setLoading(false) }
   }, [])
 
   useEffect(() => {
@@ -35,119 +31,107 @@ export default function AdminDashboard() {
   }, [fetchTeam])
 
   async function runAnalysis() {
-    setAnalyzing(true)
-    setTriggerMsg('')
+    setAnalyzing(true); setTriggerMsg('')
     try {
       const res = await fetch(
         (import.meta.env.VITE_API_BASE || '') + '/admin/analyze-now',
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'x-admin-key': session.admin_key || '' },
-          body: JSON.stringify({}),
-        }
+        { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-admin-key': session.admin_key || '' }, body: '{}' }
       )
       if (!res.ok) throw new Error(await res.text())
-      setLastTrigger(new Date())
-      setTriggerMsg('Pipeline triggered — Slack report will arrive in ~2 min')
-    } catch (e) {
-      setTriggerMsg(`Error: ${e.message}`)
-    } finally {
-      setAnalyzing(false)
-    }
+      setTriggerMsg('Pipeline triggered — Slack report in ~2 min')
+    } catch (e) { setTriggerMsg(`Error: ${e.message}`) }
+    finally { setAnalyzing(false) }
   }
 
-  const active  = team.filter(e => e.status === 'active').length
-  const idle    = team.filter(e => e.status === 'idle').length
-  const offline = team.filter(e => e.status === 'offline').length
-  const initials = (session.employee?.name || 'AD').slice(0, 2).toUpperCase()
+  const filtered = team.filter(e =>
+    (e.name || '').toLowerCase().includes(search.toLowerCase()) ||
+    (e.role || '').toLowerCase().includes(search.toLowerCase())
+  )
+  const sorted = [...filtered].sort((a, b) => {
+    const o = { active: 0, idle: 1, offline: 2 }
+    return (o[a.status] ?? 3) - (o[b.status] ?? 3) || (a.name || '').localeCompare(b.name || '')
+  })
+
+  const active    = team.filter(e => e.status === 'active').length
+  const idle      = team.filter(e => e.status === 'idle').length
+  const offline   = team.filter(e => e.status === 'offline').length
+  const tracking  = team.filter(e => e.is_tracking).length
+  const avgScore  = team.length ? Math.round(team.reduce((s, e) => s + (e.productivity_today || 0), 0) / team.length) : 0
+  const totalShots = team.reduce((s, e) => s + (e.screenshots_today || 0), 0)
+  const initials  = (session.employee?.name || 'AD').slice(0, 2).toUpperCase()
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen" style={{ background: '#F8FAFC' }}>
       {/* Header */}
-      <div className="bg-white border-b px-6 py-4 flex items-center justify-between sticky top-0 z-10"
-           style={{ borderBottomColor: 'rgba(168,85,247,0.2)', boxShadow: '0 1px 12px rgba(168,85,247,0.08)' }}>
+      <div className="bg-white border-b px-6 py-3 flex items-center justify-between sticky top-0 z-10"
+           style={{ borderColor: '#E2E8F0' }}>
         <div className="flex items-center gap-3">
-          <img src="/images/dm-logo.png" alt="Design Musketeer" className="h-8 object-contain"
+          <img src="/images/dm-logo.png" alt="DM" className="h-7 object-contain"
                onError={e => { e.target.style.display='none' }} />
           <div>
-            <h1 className="text-lg font-bold text-slate-900">Admin Dashboard</h1>
+            <h1 className="text-base font-semibold text-slate-800">Activity Monitor</h1>
             <p className="text-slate-400 text-xs">
-              {lastUpdate ? `Updated ${lastUpdate.toLocaleTimeString()}` : 'Loading…'}
+              {lastUpdate ? `Updated ${lastUpdate.toLocaleTimeString()}` : 'Loading…'} · refreshes every 4s
             </p>
           </div>
         </div>
         <div className="flex items-center gap-3">
-          <button onClick={() => navigate('/manager')}
-                  className="text-sm font-medium transition-colors"
-                  style={{ color: '#A855F7' }}>
-            ← Team View
+          <button onClick={runAnalysis} disabled={analyzing}
+                  className="px-3 py-1.5 rounded-lg text-sm font-medium text-white transition-opacity disabled:opacity-50"
+                  style={{ background: '#A855F7' }}>
+            {analyzing ? 'Running…' : 'Run AI Analysis'}
           </button>
-          <div className="w-9 h-9 rounded-full flex items-center justify-center text-white text-sm font-bold"
-               style={{ background: 'linear-gradient(135deg, #A855F7 0%, #C084FC 100%)' }}>
+          <div className="w-8 h-8 rounded-full bg-slate-700 flex items-center justify-center text-white text-xs font-semibold">
             {initials}
           </div>
           <button onClick={() => { localStorage.removeItem('session'); navigate('/login') }}
-                  className="text-xs text-slate-400 hover:text-slate-700 transition-colors">
-            Sign out
-          </button>
+                  className="text-xs text-slate-400 hover:text-slate-600">Sign out</button>
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-6 py-6 dm-fade-in">
-        {/* Stats */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-          <StatCard label="Active Now" value={active}      icon="👥" sub={`of ${team.length}`}
-                    gradient="linear-gradient(135deg, #10B981 0%, #22C55E 100%)" />
-          <StatCard label="Idle"       value={idle}        icon="😴"
-                    gradient="linear-gradient(135deg, #F97316 0%, #FB923C 100%)" />
-          <StatCard label="Offline"    value={offline}     icon="⚫"
-                    gradient="linear-gradient(135deg, #64748B 0%, #94A3B8 100%)" />
-          <StatCard label="Employees"  value={team.length} icon="🏢"
-                    gradient="linear-gradient(135deg, #A855F7 0%, #C084FC 100%)" />
-        </div>
-
-        {/* AI Analysis panel */}
-        <div className="rounded-2xl p-6 mb-6 bg-white"
-             style={{ border: '1px solid rgba(168,85,247,0.2)', boxShadow: '0 2px 12px rgba(168,85,247,0.06)' }}>
-          <div className="flex items-center justify-between flex-wrap gap-4">
-            <div>
-              <h2 className="font-semibold text-slate-900 flex items-center gap-2">
-                <span className="w-8 h-8 rounded-xl flex items-center justify-center text-white text-sm"
-                      style={{ background: 'linear-gradient(135deg, #A855F7 0%, #C084FC 100%)' }}>🤖</span>
-                AI Analysis Pipeline
-              </h2>
-              <p className="text-slate-500 text-sm mt-1">
-                Runs ai_analyzer.py + sends Slack report for today's screenshots
-              </p>
-              {lastTrigger && (
-                <p className="text-slate-400 text-xs mt-1">Last triggered: {lastTrigger.toLocaleTimeString()}</p>
-              )}
+      <div className="max-w-7xl mx-auto px-6 py-5">
+        {/* Stats strip */}
+        <div className="bg-white rounded-xl border p-4 mb-5 grid grid-cols-3 md:grid-cols-6 gap-4"
+             style={{ borderColor: '#E2E8F0' }}>
+          {[
+            { label: 'Tracking Now', value: tracking, color: '#10B981' },
+            { label: 'Active',       value: active,   color: '#A855F7' },
+            { label: 'Idle',         value: idle,     color: '#F59E0B' },
+            { label: 'Offline',      value: offline,  color: '#94A3B8' },
+            { label: 'Avg Score',    value: `${avgScore}%`, color: '#6366F1' },
+            { label: 'Shots Today',  value: totalShots, color: '#06B6D4' },
+          ].map(({ label, value, color }) => (
+            <div key={label} className="text-center">
+              <div className="text-2xl font-bold" style={{ color }}>{value}</div>
+              <div className="text-xs text-slate-400 mt-0.5">{label}</div>
             </div>
-            <button
-              onClick={runAnalysis}
-              disabled={analyzing}
-              className="px-6 py-2.5 rounded-xl text-sm font-semibold text-white transition-all duration-200 disabled:opacity-50 hover:-translate-y-0.5"
-              style={{
-                background: 'linear-gradient(135deg, #A855F7 0%, #C084FC 100%)',
-                boxShadow: analyzing ? 'none' : '0 4px 12px rgba(168,85,247,0.35)',
-              }}
-            >
-              {analyzing ? 'Triggering…' : '▶ Run AI Analysis Now'}
-            </button>
-          </div>
-          {triggerMsg && (
-            <p className={`mt-3 text-sm font-medium ${triggerMsg.startsWith('Error') ? 'text-red-500' : 'text-emerald-600'}`}>
-              {triggerMsg}
-            </p>
-          )}
+          ))}
         </div>
 
-        {/* Team grid */}
+        {triggerMsg && (
+          <div className="rounded-lg px-4 py-2 mb-4 text-sm"
+               style={{ background: triggerMsg.startsWith('Error') ? '#FEF2F2' : '#F0FDF4',
+                        color: triggerMsg.startsWith('Error') ? '#EF4444' : '#059669',
+                        border: `1px solid ${triggerMsg.startsWith('Error') ? '#FECACA' : '#6EE7B7'}` }}>
+            {triggerMsg}
+          </div>
+        )}
+
+        {/* Search */}
+        <input value={search} onChange={e => setSearch(e.target.value)}
+               placeholder="Search by name or role…"
+               className="w-full bg-white rounded-lg px-4 py-2.5 text-sm text-slate-700 mb-5 outline-none border"
+               style={{ borderColor: '#E2E8F0' }}
+               onFocus={e => e.target.style.borderColor='#A855F7'}
+               onBlur={e => e.target.style.borderColor='#E2E8F0'} />
+
         {loading ? (
-          <p className="text-slate-400 text-center py-16">Loading team…</p>
+          <p className="text-slate-400 text-center py-16 text-sm">Loading team…</p>
+        ) : sorted.length === 0 ? (
+          <p className="text-slate-400 text-center py-16 text-sm">No employees found</p>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-            {team.map(emp => <EmployeeCard key={emp.id} emp={emp} />)}
+            {sorted.map(emp => <EmployeeCard key={emp.id} emp={emp} />)}
           </div>
         )}
       </div>
