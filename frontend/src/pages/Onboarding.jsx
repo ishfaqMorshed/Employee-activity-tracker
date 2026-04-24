@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { api } from '../api/client'
 
 const DEPARTMENTS = ['Engineering', 'Design', 'Product', 'Marketing', 'Sales', 'Support', 'Operations', 'Finance']
@@ -49,6 +49,23 @@ export default function Onboarding() {
   const [error, setError] = useState('')
   const [result, setResult] = useState(null)
   const [synced, setSynced] = useState(false)
+  const [countdown, setCountdown] = useState(null)
+
+  useEffect(() => {
+    if (result) {
+      setCountdown(3)
+    }
+  }, [result])
+
+  useEffect(() => {
+    if (countdown === null) return
+    if (countdown === 0) {
+      window.location.href = `/employee/${result.employee_id}`
+      return
+    }
+    const t = setTimeout(() => setCountdown(c => c - 1), 1000)
+    return () => clearTimeout(t)
+  }, [countdown])
 
   function set(field, val) { setForm(f => ({ ...f, [field]: val })) }
 
@@ -250,17 +267,13 @@ export default function Onboarding() {
                 <p className="font-medium text-white mb-2">Next steps:</p>
                 <p>1. Open the Activity Monitor desktop app</p>
                 <p>2. Press <span className="text-green-400 font-medium">START</span> to begin tracking</p>
-                <p>3. View your stats at{' '}
-                  <a
-                    href={`${window.location.origin}/employee/${result.employee_id}`}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="text-blue-400 underline hover:text-blue-300"
-                  >
-                    your dashboard
-                  </a>
-                </p>
+                <p>3. Your dashboard will open automatically</p>
               </div>
+              {countdown !== null && (
+                <p className="text-slate-400 text-sm">
+                  Redirecting to dashboard in <span className="text-white font-bold">{countdown}</span>s…
+                </p>
+              )}
             </div>
           )}
 
