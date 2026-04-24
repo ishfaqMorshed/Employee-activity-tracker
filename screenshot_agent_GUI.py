@@ -113,10 +113,13 @@ def save_config(cfg: dict):
     log.info(f"Config saved for {cfg.get('name', '?')}")
 
 
-def resolve_employee_id(cfg: dict) -> dict:
-    """Fill employee_id from /auth/whoami if missing."""
-    if cfg.get("employee_id"):
-        return cfg
+def validate_and_resolve(cfg: dict) -> dict | None:
+    """
+    Call /auth/whoami to verify api_key still exists in DB.
+    - 200 → update name/employee_id if needed, return cfg
+    - 401/404 → employee deleted; return None so caller triggers onboarding
+    - network error → assume valid (don't nuke config when server is down)
+    """
     try:
         import requests
         r = requests.get(
@@ -126,13 +129,20 @@ def resolve_employee_id(cfg: dict) -> dict:
         )
         if r.status_code == 200:
             data = r.json()
-            cfg["employee_id"] = data.get("employee_id", "")
+            cfg["employee_id"] = data.get("employee_id", cfg.get("employee_id", ""))
             cfg["name"] = data.get("name", cfg.get("name", ""))
             save_config(cfg)
-            log.info(f"Resolved employee_id: {cfg['employee_id']}")
+            log.info(f"Validated: {cfg['name']} ({cfg['employee_id']})")
+            return cfg
+        elif r.status_code in (401, 404):
+            log.warning(f"API key rejected (HTTP {r.status_code}) — employee removed from DB. Clearing config.")
+            return None
+        else:
+            log.warning(f"whoami returned {r.status_code} — assuming valid")
+            return cfg
     except Exception as e:
-        log.warning(f"whoami failed: {e}")
-    return cfg
+        log.warning(f"whoami network error: {e} — keeping config")
+        return cfg
 
 
 # ── Screenshot capture ───────────────────────────────────────────────────────
@@ -263,12 +273,17 @@ class ActivityMonitorApp(tk.Tk):
 
         cfg = load_config()
         if cfg:
-            cfg = resolve_employee_id(cfg)
+            cfg = validate_and_resolve(cfg)
+        if cfg:
             self._cfg = cfg
             self._show_main()
             self._start_control_poll()
             log.info(f"Loaded config for {cfg.get('name', '?')}")
         else:
+            # No config or api_key rejected — clear stale config and onboard
+            if os.path.exists(CONFIG_PATH):
+                os.remove(CONFIG_PATH)
+                log.info("Cleared stale config — starting onboarding")
             self._show_setup()
             _start_callback_server(self)
             self.after(800, self._open_onboarding)
